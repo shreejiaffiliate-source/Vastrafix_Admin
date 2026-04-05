@@ -1,0 +1,39 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="fw-bold mb-4">Partner <span style="color: var(--vf-blue);">Wallets</span></h2>
+    
+    <div class="card border-0 shadow-sm p-4" style="border-radius: 20px;">
+        <div class="table-responsive">
+            <table class="table align-middle table-hover">
+                <thead class="bg-light">
+                    <tr>
+                        <th>Partner Name</th>
+                        <th>Phone</th>
+                        <th>Commission (%)</th>
+                        <th>Total Withdrawn</th>
+                        <th>Current Balance</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in wallets %}
+                    <tr>
+                        <td class="fw-bold">{{ w.partner.username|upper }}</td>
+                        <td>{{ w.partner.phone }}</td>
+                        <td>{{ w.commission_rate }}%</td>
+                        <td class="text-muted">₹{{ w.total_withdrawn }}</td>
+                        <td><span class="badge bg-success fs-6">₹{{ w.balance|floatformat:2 }}</span></td>
+                        <td class="text-end">
+                            <a href="{% url 'user_detail' w.partner.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                View Profile
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

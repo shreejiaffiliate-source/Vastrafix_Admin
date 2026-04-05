@@ -1,0 +1,44 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<h2 class="mb-4" style="font-weight: 700;">Pending <span style="color: #ffc107;">Allocation</span></h2>
+
+<div class="row">
+    {% for order in orders %}
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm p-3" style="border-radius: 15px; border-left: 5px solid #ffc107 !important;">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="mb-1">Order #VF-{{ order.id }}</h5>
+                    <p class="text-muted small mb-2">Customer: {{ order.user.username }} | ₹{{ order.total_amount }}</p>
+                </div>
+                <span class="badge bg-warning text-dark">Waiting for Partner</span>
+            </div>
+
+            <hr>
+
+            <form action="{% url 'assign_partner' order.id %}" method="POST">
+                {% csrf_token %}
+                <label class="form-label small font-weight-bold">Select Partner to Assign:</label>
+                <div class="input-group">
+                    <select name="partner_id" class="form-select" required>
+                        <option value="">Choose Partner...</option>
+                        {% for partner in partners %}
+                            <option value="{{ partner.id }}">
+                                {{ partner.username }} 
+                                </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-dark">Assign Now</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <img src="https://cdn-icons-png.flaticon.com/512/4436/4436481.png" width="100" class="mb-3 opacity-50">
+        <h4>All orders are assigned! No action required.</h4>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

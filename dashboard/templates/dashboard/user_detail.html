@@ -1,0 +1,247 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+
+<style>
+    .profile-card { border-radius: 20px; border: none; overflow: hidden; }
+    .profile-header { background: linear-gradient(135deg, var(--vf-blue), #1e293b); height: 100px; }
+    .profile-avatar-container { margin-top: -50px; }
+    .info-label { color: #64748b; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .info-value { font-weight: 600; color: #1e293b; margin-bottom: 15px; }
+    .quick-stat-card { border-radius: 15px; background: #f8fafc; border: 1px solid #f1f5f9; padding: 15px; text-align: center; height: 100%; transition: 0.3s; }
+    .quick-stat-card:hover { transform: translateY(-5px); background: #fff; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+    
+    /* Status Colors */
+    .st-delivered { background: #dcfce7; color: #16a34a; font-weight: 700; }
+    .st-other { background: #f1f5f9; color: #475569; font-weight: 700; }
+
+    /* Paging Style */
+    /* Paging Capsule Style */
+    .pagination-container {
+        background: #fff;
+        border-radius: 50px; /* Capsule shape */
+        padding: 10px 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        display: inline-flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .pagination .page-item {
+        border: none;
+        margin: 0 2px;
+    }
+
+    .pagination .page-link {
+        border: none !important;
+        color: #475569 !important; /* Gray text */
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 8px 15px;
+        border-radius: 10px !important;
+        transition: 0.3s;
+        background: transparent;
+    }
+
+    /* Blue Box for Active Page */
+    .pagination .page-item.active .page-link {
+        background-color: #00a9e0 !important; /* VF Blue */
+        color: white !important;
+        box-shadow: 0 4px 10px rgba(0, 169, 224, 0.3);
+    }
+
+    .pagination .page-link:hover {
+        background-color: #f1f5f9;
+    }
+
+    .paging-nav-text {
+        color: #64748b;
+        font-weight: 700;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="javascript:history.back()" class="btn btn-light rounded-pill px-3 shadow-sm border">
+            <i class="fas fa-arrow-left me-2"></i> Back
+        </a>
+        <form action="{% url 'toggle_user_status' customer.id %}" method="POST">
+            {% csrf_token %}
+            <button type="submit" class="btn rounded-pill px-4 {% if customer.is_active %}btn-outline-danger{% else %}btn-success{% endif %} shadow-sm">
+                {% if customer.is_active %}<i class="fas fa-user-slash me-2"></i> Block User{% else %}<i class="fas fa-user-check me-2"></i> Unblock User{% endif %}
+            </button>
+        </form>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card profile-card shadow-sm mb-4">
+                <div class="profile-header"></div>
+                <div class="card-body p-4 pt-0 text-center">
+                    <div class="profile-avatar-container mb-3">
+                        <img src="https://ui-avatars.com/api/?name={{ customer.username }}&background=0ea5e9&color=fff&size=128" 
+                             class="rounded-circle border border-4 border-white shadow-sm" width="100">
+                    </div>
+                    <h4 class="fw-bold mb-1">{{ customer.username }}</h4>
+                    <span class="badge {% if customer.role == 'partner' %}bg-info{% else %}bg-primary{% endif %} rounded-pill px-3 mb-2">
+                        {{ customer.role|upper }}
+                    </span>
+                    
+                    {% if customer.role == 'partner' %}
+                        <div class="d-flex justify-content-center mt-1">
+                            {% if customer.is_online %}
+                                <span class="badge bg-success-subtle text-success border border-success border-opacity-25 px-3 py-2 rounded-pill">
+                                    <i class="fas fa-circle me-1 small"></i> ONLINE
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary border-opacity-25 px-3 py-2 rounded-pill">
+                                    OFFLINE
+                                </span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <hr class="my-4 opacity-10">
+
+                    <div class="text-start">
+                        <div class="info-label">Email Address</div>
+                        <div class="info-value text-break">{{ customer.email|default:"Not Provided" }}</div>
+                        
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="info-label">Phone</div>
+                                <div class="info-value">{{ customer.phone }}</div>
+                            </div>
+                            <div class="col-6 text-end text-md-start">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">
+                                    {% if customer.is_active %}
+                                        <span class="text-success small fw-bold">ACTIVE</span>
+                                    {% else %}
+                                        <span class="text-danger small fw-bold">BLOCKED</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-label">Member Since</div>
+                        <div class="info-value">{{ customer.date_joined|date:"d M Y" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="quick-stat-card shadow-sm">
+                        <div class="info-label">{% if customer.role == 'partner' %}Total Deliveries{% else %}Total Orders{% endif %}</div>
+                        <h3 class="fw-bold text-primary mb-0">{{ activities.paginator.count }}</h3>
+                    </div>
+                </div>
+                
+                {% if customer.role == 'partner' %}
+                <div class="col-md-4">
+                    <div class="quick-stat-card shadow-sm border-primary bg-primary bg-opacity-10">
+                        <div class="info-label text-primary">Wallet Balance</div>
+                        <h3 class="fw-bold text-dark mb-0">₹{{ wallet_balance|default:"0.00" }}</h3>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-md-4">
+                    <div class="quick-stat-card shadow-sm">
+                        <div class="info-label">Account Type</div>
+                        <h4 class="fw-bold mb-0">Standard</h4>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="col-md-4">
+                    <div class="quick-stat-card shadow-sm">
+                        <div class="info-label">Last Login</div>
+                        <div class="fw-bold small mt-2">{{ customer.last_login|date:"d M, h:i A"|default:"Never" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 20px;">
+                <h5 class="fw-bold mb-4">
+                    <i class="fas fa-history me-2 text-muted"></i>
+                    {% if customer.role == 'partner' %}Assigned Deliveries{% else %}Order History{% endif %}
+                </h5>
+                <div class="table-responsive">
+                    <table class="table align-middle table-hover">
+                        <thead class="text-muted small uppercase">
+                            <tr>
+                                <th class="border-0">ORDER ID</th>
+                                <th class="border-0">DATE</th>
+                                <th class="border-0">AMOUNT</th>
+                                <th class="border-0 text-center">STATUS</th>
+                                <th class="border-0 text-end">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in activities %}
+                            <tr>
+                                <td class="border-0"><span class="fw-bold text-dark">#VF-{{ order.id }}</span></td>
+                                <td class="border-0 text-muted small">{{ order.created_at|date:"d M Y" }}</td>
+                                <td class="border-0 fw-bold">₹{{ order.total_amount }}</td>
+                                <td class="border-0 text-center">
+                                    <span class="badge rounded-pill px-3 py-2 {% if order.status == 'delivered' %}st-delivered{% else %}st-other{% endif %}">
+                                        {{ order.status|upper }}
+                                    </span>
+                                </td>
+                                <td class="border-0 text-end">
+                                    <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-vf-blue rounded-pill px-3 fw-bold shadow-sm">View</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="fas fa-box-open d-block fa-2x mb-3 opacity-25"></i>
+                                    No activity found for this {% if customer.role == 'partner' %}Partner{% else %}Customer{% endif %}.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if activities.has_other_pages %}
+                <div class="d-flex justify-content-center mt-4 pb-3">
+                    <div class="pagination-container">
+                        <ul class="pagination mb-0 align-items-center">
+                            
+                            {% if activities.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link py-1" href="?page={{ activities.previous_page_number }}">
+                                        <span class="text-info">«</span> <span class="ms-2">Prev</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for i in activities.paginator.page_range %}
+                                {% if activities.number == i %}
+                                    <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                                {% elif i > activities.number|add:'-3' and i < activities.number|add:'3' %}
+                                    <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if activities.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link py-1" href="?page={{ activities.next_page_number }}">
+                                        <span class="me-2">Next</span> <span class="text-info">»</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+
+<style>
+    :root {
+        --vf-blue: #00a9e0;
+        --vf-green: #8cc63f;
+    }
+    .stat-card {
+        border-radius: 20px;
+        transition: transform 0.3s ease;
+        border: none;
+        overflow: hidden;
+        position: relative;
+    }
+    .stat-card:hover { transform: translateY(-5px); }
+    .stat-icon {
+        position: absolute;
+        right: -10px;
+        bottom: -10px;
+        font-size: 5rem;
+        opacity: 0.15;
+        color: white;
+    }
+    .quick-stat-box {
+        background: white;
+        padding: 15px 20px;
+        border-radius: 15px;
+        border-left: 4px solid var(--vf-blue);
+    }
+    .leaderboard-img {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #eee;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">VastraFix <span style="color: var(--vf-blue);">Analytics</span></h2>
+            <p class="text-muted">Real-time business & partner performance</p>
+        </div>
+        <div class="bg-white px-3 py-2 rounded-pill shadow-sm border">
+            <i class="fas fa-calendar-alt text-primary me-2"></i>
+            <span class="fw-bold text-dark">{% now "d F Y" %}</span>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="quick-stat-box shadow-sm d-flex align-items-center">
+                <div class="me-3 bg-light-primary p-3 rounded-circle" style="background: #e0f2fe;">
+                    <i class="fas fa-truck-loading text-primary"></i>
+                </div>
+                <div>
+                    <small class="text-muted d-block">Today's Pickups</small>
+                    <span class="fw-bold fs-5">{{ today_orders_pickup }} Pending</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="quick-stat-box shadow-sm d-flex align-items-center" style="border-left-color: var(--vf-green);">
+                <div class="me-3 p-3 rounded-circle" style="background: #ecfdf5;">
+                    <i class="fas fa-coins text-success"></i>
+                </div>
+                <div>
+                    <small class="text-muted d-block">Today's Earnings</small>
+                    <span class="fw-bold fs-5">₹{{ today_total_earnings }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="quick-stat-box shadow-sm d-flex align-items-center" style="border-left-color: #6366f1;">
+                <div class="me-3 p-3 rounded-circle" style="background: #eef2ff;">
+                    <i class="fas fa-user-check text-indigo" style="color: #6366f1;"></i>
+                </div>
+                <div>
+                    <small class="text-muted d-block">Partners On-Duty</small>
+                    <span class="fw-bold fs-5">{{ online_partners_count }} Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="card stat-card shadow-sm p-4 text-white h-100" style="background: linear-gradient(135deg, #10b981, #059669);">
+            <h6 class="opacity-75">Total Revenue</h6>
+            <h2 class="display-6 fw-bold mb-0">₹{{ total_revenue|floatformat:2 }}</h2>
+            <i class="fas fa-wallet stat-icon"></i>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <a href="{% url 'admin_payouts' %}" class="text-decoration-none">
+            <div class="card stat-card shadow-sm p-4 h-100" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;">
+                <h6 class="opacity-75">Payout Requests</h6>
+                <h2 class="display-6 fw-bold mb-0">{{ pending_payouts_count }}</h2>
+                <i class="fas fa-hand-holding-usd stat-icon"></i>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card shadow-sm p-4 text-white h-100" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
+            <h6 class="opacity-75">Admin Profit (1%)</h6>
+            <h2 class="display-6 fw-bold mb-0">₹{{ admin_profit }}</h2>
+            <i class="fas fa-chart-line stat-icon"></i>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <a href="{% url 'admin_partner_wallets' %}" class="text-decoration-none">
+            <div class="card stat-card shadow-sm p-4 text-white h-100" style="background: linear-gradient(135deg, #6366f1, #4338ca);">
+                <h6 class="opacity-75">Partner Wallets</h6>
+                <h2 class="display-6 fw-bold mb-0">₹{{ total_wallet_balance|floatformat:2 }}</h2>
+                <p class="small mb-0 mt-2">View Individual Balances <i class="fas fa-arrow-right small"></i></p>
+                <i class="fas fa-university stat-icon"></i>
+            </div>
+        </a>
+    </div>
+</div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px; min-height: 400px;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Recent Orders</h5>
+                    <a href="{% url 'admin_orders' %}" class="btn btn-sm btn-light rounded-pill border">View All</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle table-hover">
+                        <thead class="text-muted small">
+                            <tr>
+                                <th>ORDER ID</th>
+                                <th>STATUS</th>
+                                <th>AMOUNT</th>
+                                <th class="text-end">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td><span class="fw-bold">#VF-{{ order.id }}</span></td>
+                                <td><span class="badge rounded-pill bg-light text-dark border">{{ order.status|upper }}</span></td>
+                                <td><span class="fw-bold text-primary">₹{{ order.total_amount }}</span></td>
+                                <td class="text-end">
+                                    <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-vf-blue rounded-pill px-3">Details</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px;">
+                <h5 class="fw-bold mb-4">Service Popularity</h5>
+                <div class="row">
+                    {% for service in service_stats %}
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-bold small">{{ service.item__type__name }}</span>
+                            <span class="text-muted small">{{ service.total_qty }} Items</span>
+                        </div>
+                        <div class="progress" style="height: 8px; border-radius: 10px;">
+                            <div class="progress-bar" style="width: {{ service.total_qty }}%; background: var(--vf-blue);"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px;">
+                <h5 class="fw-bold mb-3"><i class="fas fa-trophy text-warning me-2"></i>Top Partners</h5>
+                <div class="list-group list-group-flush">
+                    {% for partner in top_partners %}
+                    <div class="list-group-item px-0 border-0 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="leaderboard-img d-flex align-items-center justify-content-center bg-light fw-bold text-primary me-2">
+                                {{ partner.username|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <div class="fw-bold small">{{ partner.username }}</div>
+                                <small class="text-muted">{{ partner.delivered_count }} Deliveries</small>
+                            </div>
+                        </div>
+                        <i class="fas fa-medal text-warning"></i>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px; background: #fffcf0; border: 1px solid #fef3c7;">
+                <h6 class="fw-bold text-warning mb-3"><i class="fas fa-exclamation-circle me-2"></i>Wallet Attention</h6>
+                {% for w in low_balance_wallets %}
+                <a href="{% url 'user_detail' w.partner.id %}" class="text-decoration-none d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-dark">{{ w.partner.username }}</span>
+                    <span class="text-danger fw-bold small">₹{{ w.balance|floatformat:2 }}</span>
+                </a>
+                {% empty %}
+                    <p class="small text-muted text-center">Sabka balance mast hai! ✅</p>
+                {% endfor %}
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 20px; background: #fff5f5;">
+                <h5 class="fw-bold text-danger mb-3"><i class="fas fa-headset me-2"></i>Complaints</h5>
+                <h1 class="display-5 fw-bold text-danger mb-0">{{ pending_complaints }}</h1>
+                <p class="text-muted small">Pending issues</p>
+                <a href="{% url 'admin_complaints' %}" class="btn btn-danger btn-sm w-100 mt-2 rounded-pill">Resolve Now</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

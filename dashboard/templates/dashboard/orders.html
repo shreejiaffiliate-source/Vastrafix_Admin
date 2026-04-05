@@ -1,0 +1,183 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<style>
+    .order-card { border-radius: 20px; overflow: hidden; background: #fff; }
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+    /* Status Colors */
+    .st-pending { background: #fee2e2; color: #dc2626; }    /* Red */
+    .st-accepted { background: #fef3c7; color: #d97706; }   /* Yellow/Orange */
+    .st-pickup { background: #e0f2fe; color: #0284c7; }     /* Blue */
+    .st-processing { background: #f3e8ff; color: #9333ea; } /* Purple */
+    .st-delivered { background: #dcfce7; color: #16a34a; }  /* Green */
+    .st-cancelled { background: #f3f4f6; color: #4b5563; }  /* Gray */
+
+    .table thead th { 
+        font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; 
+        color: #64748b; background: #f8fafc; padding: 15px; 
+    }
+
+    /* Paging Style */
+    .pagination .page-link { border: none; color: #64748b; margin: 0 3px; border-radius: 8px; font-weight: 600; }
+    .pagination .active .page-link { background-color: var(--vf-blue); color: white; }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Manage <span style="color: var(--vf-blue);">Orders</span></h2>
+            <p class="text-muted mb-0">Total {{ orders.paginator.count }} orders found</p>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <form method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control border-0 shadow-sm" placeholder="Order ID or Name..." value="{{ request.GET.search }}" style="border-radius: 12px; width: 200px;">
+                
+                <select name="status" class="form-select border-0 shadow-sm" onchange="this.form.submit()" style="border-radius: 12px;">
+                    <option value="">All Status</option>
+                    <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="accepted" {% if current_status == 'accepted' %}selected{% endif %}>Accepted</option>
+                    <option value="pickup" {% if current_status == 'pickup' %}selected{% endif %}>Picked Up</option>
+                    <option value="processing" {% if current_status == 'processing' %}selected{% endif %}>Processing</option>
+                    <option value="delivered" {% if current_status == 'delivered' %}selected{% endif %}>Delivered</option>
+                    <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm order-card">
+        <div class="table-responsive">
+            <table class="table align-middle table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Order ID</th>
+                        <th>Customer</th>
+                        <th>Date & Time</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td class="ps-4">
+                            <a href="{% url 'order_detail' order.id %}" class="text-decoration-none fw-bold" style="color: var(--vf-blue);">
+                                #VF-{{ order.id }}
+                            </a>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ order.user.username }}</div>
+                            <small class="text-muted">{{ order.phone|default:order.user.phone }}</small>
+                        </td>
+                        <td>
+                            <div class="small">{{ order.created_at|date:"d M Y" }}</div>
+                            <div class="text-muted small">{{ order.created_at|date:"h:i A" }}</div>
+                        </td>
+                        <td class="fw-bold text-dark">₹{{ order.total_amount }}</td>
+                        <td>
+                            <span class="status-badge 
+                                {% if order.status == 'pending' %}st-pending
+                                {% elif order.status == 'accepted' %}st-accepted
+                                {% elif order.status == 'pickup' %}st-pickup
+                                {% elif order.status == 'processing' %}st-processing
+                                {% elif order.status == 'delivered' %}st-delivered
+                                {% else %}st-cancelled{% endif %}">
+                                {{ order.status }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex gap-2 justify-content-center">
+                                <a href="{% url 'order_detail' order.id %}" 
+                                class="btn btn-sm shadow-sm d-flex align-items-center" 
+                                style="background: #f1f5f9; color: #1e293b; border-radius: 10px; padding: 6px 12px; font-weight: 600; border: 1px solid #e2e8f0;" 
+                                title="View Details">
+                                    <i class="fas fa-eye text-primary me-2"></i> Details
+                                </a>
+
+                                <button class="btn btn-sm btn-vf-blue shadow-sm d-flex align-items-center" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#statusModal{{ order.id }}"
+                                        style="border-radius: 10px; padding: 6px 15px; font-weight: 600;">
+                                    <i class="fas fa-edit me-2"></i> Update
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <div class="modal fade" id="statusModal{{ order.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow" style="border-radius: 20px;">
+                                <form action="{% url 'update_order_status' order.id %}" method="POST">
+                                    {% csrf_token %}
+                                    <div class="modal-header border-0 pb-0">
+                                        <h5 class="fw-bold">Update Order Status #VF-{{ order.id }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body p-4">
+                                        <label class="form-label small fw-bold">Select New Status</label>
+                                        <select name="status" class="form-select border-0 bg-light p-3" style="border-radius: 12px;">
+                                            <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                                            <option value="accepted" {% if order.status == 'accepted' %}selected{% endif %}>Accepted</option>
+                                            <option value="pickup" {% if order.status == 'pickup' %}selected{% endif %}>Pickup</option>
+                                            <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
+                                            <option value="shipping" {% if order.status == 'shipping' %}selected{% endif %}>Shipping</option>
+                                            <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                            <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                        </select>
+                                    </div>
+                                    <div class="modal-footer border-0 pt-0">
+                                        <button type="submit" class="btn btn-vf-blue w-100 py-3 rounded-pill">Update Status</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="fas fa-box-open fa-3x text-light mb-3"></i>
+                            <h6 class="text-muted">No orders found.</h6>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if orders.has_other_pages %}
+    <div class="d-flex justify-content-center mt-5 pb-5">
+        <nav>
+            <ul class="pagination shadow-sm p-2 bg-white rounded-pill">
+                {% if orders.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1&status={{ current_status|default:'' }}&search={{ request.GET.search|default:'' }}">&laquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ orders.previous_page_number }}&status={{ current_status|default:'' }}&search={{ request.GET.search|default:'' }}">Prev</a></li>
+                {% endif %}
+
+                {% for i in orders.paginator.page_range %}
+                    {% if orders.number == i %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                    {% elif i > orders.number|add:'-3' and i < orders.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?page={{ i }}&status={{ current_status|default:'' }}&search={{ request.GET.search|default:'' }}">{{ i }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if orders.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ orders.next_page_number }}&status={{ current_status|default:'' }}&search={{ request.GET.search|default:'' }}">Next</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ orders.paginator.num_pages }}&status={{ current_status|default:'' }}&search={{ request.GET.search|default:'' }}">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

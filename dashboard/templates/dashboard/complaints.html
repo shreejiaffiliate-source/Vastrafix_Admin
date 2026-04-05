@@ -1,0 +1,156 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+
+<style>
+    .complaint-card {
+        border-radius: 20px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 1px solid #f1f5f9;
+        background: #fff;
+    }
+    .complaint-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
+    }
+    /* Dynamic Left Borders */
+    .border-pending { border-left: 6px solid #ef4444 !important; }
+    .border-resolved { border-left: 6px solid #10b981 !important; }
+    
+    .msg-box {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 15px;
+        font-size: 0.92rem;
+        color: #334155;
+        border: 1px solid #f1f5f9;
+        position: relative;
+    }
+    .badge-id { background: #f1f5f9; color: #475569; font-weight: 700; border-radius: 6px; }
+    .partner-tag { background: #e0f2fe; color: #0369a1; font-weight: 600; border-radius: 6px; }
+    
+    .modal-content { border-radius: 24px; border: none; }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Help <span style="color: var(--vf-blue);">Desk</span></h2>
+            <p class="text-muted small">Manage customer issues and partner disputes</p>
+        </div>
+        
+        <div class="d-flex gap-3 align-items-center">
+            <form method="GET" class="d-flex gap-2">
+                <div class="input-group shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                    <span class="input-group-text bg-white border-0"><i class="fas fa-filter text-muted small"></i></span>
+                    <select name="type" class="form-select border-0 ps-0" onchange="this.form.submit()">
+                        <option value="">All Tickets</option>
+                        <option value="customer" {% if current_filter == 'customer' %}selected{% endif %}>Customer Support</option>
+                        <option value="partner" {% if current_filter == 'partner' %}selected{% endif %}>Partner Support</option>
+                    </select>
+                </div>
+            </form>
+            <div class="bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill fw-bold small border border-danger border-opacity-25">
+                <i class="fas fa-exclamation-circle me-1"></i> Pending: {{ pending_count }}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for c in complaints %}
+        <div class="col-md-6 mb-4">
+            <div class="card complaint-card shadow-sm p-4 h-100 {% if c.status|lower == 'pending' %}border-pending{% else %}border-resolved{% endif %}">
+                
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 class="text-uppercase fw-bold text-muted mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">
+                            {% if c.order %}📦 Order Related{% else %}📱 App Feedback{% endif %}
+                        </h6>
+                        <h5 class="fw-bold text-dark mb-1">{{ c.user.username }}</h5>
+                        <span class="badge bg-light text-muted border-0 p-0" style="font-size: 0.75rem;">Role: {{ c.user.role|capfirst }}</span>
+                    </div>
+                    <span class="badge rounded-pill {% if c.status|lower == 'pending' %}bg-danger{% else %}bg-success{% endif %} px-3 py-2">
+                        {{ c.status|upper }}
+                    </span>
+                </div>
+
+                {% if c.order %}
+                <div class="d-flex justify-content-between align-items-center p-2 mb-3 rounded-3" style="background: #f1f5f9;">
+                    <span class="badge badge-id px-2 py-1 small">#VF-{{ c.order.id }}</span>
+                    {% if c.order.partner %}
+                        <span class="badge partner-tag px-2 py-1 small"><i class="fas fa-user-check me-1"></i>{{ c.order.partner.username }}</span>
+                    {% else %}
+                        <span class="text-muted italic small" style="font-size: 0.7rem;">Unassigned</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="msg-box mb-4">
+                    <i class="fas fa-quote-left opacity-25 me-2"></i>
+                    {{ c.message }}
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                    <div class="d-flex gap-2">
+                        {% if c.status|lower == 'pending' %}
+                        <form action="{% url 'resolve_complaint' c.id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 fw-bold">
+                                <i class="fas fa-check me-1"></i> Resolve
+                            </button>
+                        </form>
+                        
+                        {% if c.order and c.order.partner %}
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#fineModal{{ c.id }}">
+                                <i class="fas fa-gavel me-1"></i> Fine
+                            </button>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    
+                    {% if c.order %}
+                    <a href="{% url 'order_detail' c.order.id %}" class="btn btn-sm btn-light border rounded-pill px-3">
+                        View Order <i class="fas fa-external-link-alt ms-1 small"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if c.order and c.order.partner %}
+            <div class="modal fade" id="fineModal{{ c.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content shadow-lg">
+                        <form action="{% url 'fine_partner' c.id %}" method="POST">
+                            {% csrf_token %}
+                            <div class="modal-header border-0 p-4 pb-0">
+                                <h5 class="modal-title fw-bold text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Apply Penalty</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4 text-center">
+                                <p class="text-muted">Applying fine to <strong>{{ c.order.partner.username }}</strong> for Order #VF-{{ c.order.id }}</p>
+                                <div class="input-group input-group-lg my-4 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                                    <span class="input-group-text bg-white border-0">₹</span>
+                                    <input type="number" name="fine_amount" class="form-control border-0" value="50" min="10" required>
+                                </div>
+                                <p class="extra-small text-muted mt-2">The amount will be deducted from the partner's wallet.</p>
+                            </div>
+                            <div class="modal-footer border-0 p-4 pt-0">
+                                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Deduct Amount</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <img src="https://cdn-icons-png.flaticon.com/512/7439/7439169.png" width="80" class="opacity-25 mb-3">
+            <h5 class="text-muted">Inbox is clear! No complaints found.</h5>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

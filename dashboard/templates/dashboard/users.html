@@ -1,0 +1,153 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+
+<style>
+    /* --- Horizontal Tabs Container --- */
+    .status-filter-container {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        padding: 6px;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+    }
+
+    .status-link {
+        padding: 8px 25px;
+        margin: 0 4px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+        color: #64748b;
+        text-transform: uppercase;
+    }
+
+    /* Hover Effect */
+    .status-link:hover { background: #f1f5f9; color: var(--vf-blue); }
+
+    /* Active States (Ek hi line mein alag colors) */
+    .status-link.active-all { background: var(--vf-blue); color: white !important; }
+    .status-link.active-success { background: #10b981; color: white !important; }
+    .status-link.active-danger { background: #ef4444; color: white !important; }
+
+    /* Baaki Styles */
+    .user-card { border-radius: 20px; overflow: hidden; margin-top: 20px; }
+    .avatar-circle {
+        width: 40px; height: 40px; background: #f1f5f9; color: var(--vf-blue);
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 50%; font-weight: bold; border: 2px solid #e2e8f0;
+    }
+    .status-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .bg-active { background-color: #10b981; }
+    .bg-blocked { background-color: #ef4444; }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">
+                {% if current_role == 'partner' %}Partner{% else %}Customer{% endif %} 
+                <span style="color: var(--vf-blue);">Management</span>
+            </h2>
+            <p class="text-muted mb-0">Manage your verified {% if current_role == 'partner' %}partners{% else %}customers{% endif %}</p>
+        </div>
+        
+        <div class="status-filter-container shadow-sm">
+            <a href="?role={{ current_role }}" 
+               class="status-link {% if not current_status %}active-all{% endif %}">
+               ALL
+            </a>
+            
+            <a href="?role={{ current_role }}&status=active" 
+               class="status-link {% if current_status == 'active' %}active-success{% endif %}">
+               ACTIVE
+            </a>
+            
+            <a href="?role={{ current_role }}&status=inactive" 
+               class="status-link {% if current_status == 'inactive' %}active-danger{% endif %}">
+               BLOCKED
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm user-card p-0">
+        <div class="table-responsive">
+            <table class="table align-middle table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">User Details</th>
+                        <th>Contact</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle me-3">{{ user.username|slice:":1"|upper }}</div>
+                                <div>
+                                    <div class="fw-bold text-dark">{{ user.username }}</div>
+                                    <div class="text-muted small">ID: #{{ user.id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="text-dark">{{ user.phone}}</div>
+                            <div class="text-muted small">{{ user.email|default:"No Email" }}</div>
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                                <span class="text-success fw-bold small"><i class="fas fa-circle me-1" style="font-size: 8px;"></i> ACTIVE</span>
+                            {% else %}
+                                <span class="text-danger fw-bold small"><i class="fas fa-circle me-1" style="font-size: 8px;"></i> BLOCKED</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group shadow-sm" style="border-radius: 8px; overflow: hidden;">
+                                <a href="{% url 'user_detail' user.id %}" class="btn btn-sm btn-white border"><i class="fas fa-eye text-primary"></i></a>
+                                <form action="{% url 'toggle_user_status' user.id %}" method="POST" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="role" value="{{ current_role }}">
+                                    <button type="submit" class="btn btn-sm {% if user.is_active %}btn-light text-danger{% else %}btn-success text-white{% endif %} border">
+                                        <i class="fas {% if user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">No records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if users.has_other_pages %}
+    <div class="d-flex justify-content-center mt-4 pb-5">
+        <nav>
+            <ul class="pagination shadow-sm">
+                {% if users.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?role={{ current_role }}&status={{ current_status|default:'' }}&page={{ users.previous_page_number }}">&laquo;</a></li>
+                {% endif %}
+                {% for i in users.paginator.page_range %}
+                    <li class="page-item {% if users.number == i %}active{% endif %}">
+                        <a class="page-link" href="?role={{ current_role }}&status={{ current_status|default:'' }}&page={{ i }}">{{ i }}</a>
+                    </li>
+                {% endfor %}
+                {% if users.has_next %}
+                    <li class="page-item"><a class="page-link" href="?role={{ current_role }}&status={{ current_status|default:'' }}&page={{ users.next_page_number }}">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

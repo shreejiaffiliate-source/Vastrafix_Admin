@@ -1,0 +1,129 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+
+<style>
+    .cat-card {
+        transition: all 0.3s ease;
+        border: 1px solid #edf2f7;
+    }
+    .cat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
+    }
+    .icon-circle {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 15px;
+        font-size: 1.2rem;
+    }
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Service <span style="color: var(--vf-blue);">Categories</span></h2>
+            <p class="text-muted">Manage laundry, dry clean, and iron categories</p>
+        </div>
+        <button class="btn btn-vf-blue rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+            <i class="fas fa-plus-circle me-2"></i> Add New Category
+        </button>
+    </div>
+
+    <div class="row">
+        {% for cat in categories %}
+        <div class="col-md-3 mb-4">
+            <div class="card border-0 shadow-sm p-3 cat-card {% if not cat.is_active %}opacity-75{% endif %}" style="border-radius: 20px;">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="icon-circle {% if cat.is_active %}bg-primary bg-opacity-10 text-primary{% else %}bg-secondary bg-opacity-10 text-secondary{% endif %}">
+                        {% if "Iron" in cat.name %}<i class="fas fa-bolt"></i>
+                        {% elif "Wash" in cat.name %}<i class="fas fa-soap"></i>
+                        {% elif "Dry" in cat.name %}<i class="fas fa-wind"></i>
+                        {% elif "Saree" in cat.name %}<i class="fas fa-scroll"></i>
+                        {% else %}<i class="fas fa-tags"></i>{% endif %}
+                    </div>
+                    
+                    <div class="dropdown">
+                        <button class="btn btn-link text-muted p-0" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
+                        <ul class="dropdown-menu border-0 shadow-sm dropdown-menu-end" style="border-radius: 12px;">
+                            <li><a class="dropdown-item py-2" href="{% url 'toggle_category' cat.id %}">
+                                <i class="fas {% if cat.is_active %}fa-toggle-on text-success{% else %}fa-toggle-off text-muted{% endif %} me-2"></i>
+                                {% if cat.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger py-2" href="{% url 'delete_category' cat.id %}" onclick="return confirm('Pakka delete karna hai?')">
+                                <i class="fas fa-trash-alt me-2"></i> Delete
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold text-dark mb-1">{{ cat.name }}</h5>
+                <div class="d-flex align-items-center">
+                    {% if cat.is_active %}
+                        <span class="status-dot bg-success"></span>
+                        <small class="text-success fw-bold uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">ACTIVE</small>
+                    {% else %}
+                        <span class="status-dot bg-danger"></span>
+                        <small class="text-danger fw-bold uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">INACTIVE</small>
+                    {% endif %}
+                </div>
+                
+                <div class="mt-4">
+                    <div class="action-bar">
+                        <a href="{% url 'toggle_category' cat.id %}" 
+                        class="btn btn-toggle {% if cat.is_active %}btn-light text-muted{% else %}btn-success text-white shadow-sm{% endif %}">
+                            {% if cat.is_active %}<i class="fas fa-pause-circle me-1"></i> Disable{% else %}<i class="fas fa-play-circle me-1"></i> Enable{% endif %}
+                        </a>
+
+                        <a href="{% url 'delete_category' cat.id %}" 
+                        class="btn btn-delete-mini shadow-sm"
+                        onclick="return confirm('Pakka delete karna hai?')" 
+                        title="Delete Category">
+                            <i class="fas fa-trash-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="100" class="opacity-25 mb-3">
+            <h5 class="text-muted">No categories added yet.</h5>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 25px;">
+            <form action="{% url 'add_new_category' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-header border-0 p-4 pb-0">
+                    <h5 class="fw-bold m-0">Create <span style="color: var(--vf-blue);">New Category</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <label class="small fw-bold text-muted mb-2">Category Name</label>
+                    <input type="text" name="category_name" class="form-control border-0 bg-light p-3" placeholder="e.g. Premium Dry Cleaning" required style="border-radius: 15px;">
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="submit" class="btn btn-vf-blue w-100 py-3 rounded-pill fw-bold shadow-sm">Add Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

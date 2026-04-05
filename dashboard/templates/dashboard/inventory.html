@@ -1,0 +1,157 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 style="font-weight: 700;">Categories & <span style="color: var(--vf-blue);">Items</span></h2>
+    <button class="btn btn-vf-blue shadow-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">+ Add New Item</button>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3" style="border-radius: 15px;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0" style="font-weight: 600;">Categories</h5>
+                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#addCategoryModal" style="border-radius: 8px;">+ Add</button>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for cat in categories %}
+                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                    <span style="font-weight: 600;">{{ cat.name }}</span>
+                   <!-- <span class="badge rounded-pill bg-light text-dark border">{{ cat.subcategory_set.count }} Sub</span> -->
+                </li>
+                {% empty %}
+                <li class="list-group-item px-0 text-muted">No categories found.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm p-3" style="border-radius: 15px;">
+            <h5 class="mb-3" style="font-weight: 600;">Items & Pricing</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Subcategory</th>
+                            <th>Price</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td><strong>{{ item.name }}</strong></td>
+                            <td><span class="text-muted">{{ item.subcategory.name }}</span></td>
+                            <td><span style="color: var(--vf-blue); font-weight: 700;">₹{{ item.price }}</span></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#priceModal{{ item.id }}">
+                                    Update Rate
+                                </button>
+                            </td>
+                        </tr>
+
+                        <div class="modal fade" id="priceModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow" style="border-radius: 15px;">
+                                    <form action="{% url 'update_price' item.id %}" method="POST">
+                                        {% csrf_token %}
+                                        <div class="modal-header border-0 bg-light">
+                                            <h5 class="modal-title">Update Rate: {{ item.name }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body p-4">
+                                            <label class="form-label">New Price for {{ item.name }} (₹):</label>
+                                            <input type="number" name="new_price" class="form-control" value="{{ item.price }}" required>
+                                        </div>
+                                        <div class="modal-footer border-0">
+                                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-success" style="background-color: var(--vf-green); border: none;">Update Now</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center py-4 text-muted">No items found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 15px;">
+            <form action="{% url 'add_category' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-header border-0 bg-light">
+                    <h5 class="modal-title">Add New Category</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label">Category Name:</label>
+                        <input type="text" name="category_name" class="form-control" placeholder="e.g. Wash & Iron, Dry Cleaning" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" style="background-color: var(--vf-green); border: none;">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 15px;">
+            <form action="{% url 'add_item' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-header border-0 bg-light">
+                    <h5 class="modal-title">Add New Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label">Select Category:</label>
+                        <select name="category" class="form-select" required>
+                            <option value="">Choose...</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Select Subcategory:</label>
+                        <select name="subcategory" class="form-select" required>
+                            <option value="">Choose...</option>
+                            {% for sub in subcategories %}
+                            <option value="{{ sub.id }}">{{ sub.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Item Name:</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Shirt, Saree, Jeans" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price (₹):</label>
+                        <input type="number" name="price" class="form-control" placeholder="0.00" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-vf-blue" style="background-color: var(--vf-blue); border: none;">Add Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

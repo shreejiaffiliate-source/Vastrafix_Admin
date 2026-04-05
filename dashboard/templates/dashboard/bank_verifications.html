@@ -1,0 +1,148 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Bank <span style="color: var(--vf-blue);">Verifications</span></h2>
+            <p class="text-muted">Manage partner bank accounts</p>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <a href="?status=pending" class="btn rounded-pill px-4 {% if current_status == 'pending' %}btn-vf-blue{% else %}btn-light{% endif %} shadow-sm">
+            Pending {% if pending_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_count }}</span>{% endif %}
+        </a>
+        <a href="?status=verified" class="btn rounded-pill px-4 {% if current_status == 'verified' %}btn-vf-blue{% else %}btn-light{% endif %} shadow-sm">
+            Verified Accounts
+        </a>
+        <a href="?status=rejected" class="btn rounded-pill px-4 {% if current_status == 'rejected' %}btn-vf-blue{% else %}btn-light{% endif %} shadow-sm">
+            Rejected
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm" style="border-radius: 20px; overflow: hidden;">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 table-hover">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Partner</th>
+                        <th>Account Details</th>
+                        <th>IFSC</th>
+                        <th>Status</th>
+                        <th class="text-center">Document</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detail in details %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold">{{ detail.partner.username }}</div>
+                            <small class="text-muted">{{ detail.partner.phone }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ detail.account_holder_name }}</div>
+                            <small class="text-muted">{{ detail.bank_name }} | {{ detail.account_number }}</small>
+                        </td>
+                        <td><code class="text-primary fw-bold">{{ detail.ifsc_code }}</code></td>
+                        <td>
+                            {% if detail.status == 'verified' %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-3">VERIFIED</span>
+                            {% elif detail.status == 'rejected' %}
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-3">REJECTED</span>
+                            {% else %}
+                                <span class="badge bg-warning-subtle text-warning rounded-pill px-3">PENDING</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if detail.passbook_image %}
+                                <a href="{{ detail.passbook_image.url }}" target="_blank" class="btn btn-sm btn-info text-white">
+                                    <i class="fas fa-image"></i> View Document
+                                </a>
+                            {% else %}
+                                <span class="badge bg-secondary">No Image</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if detail.status == 'pending' %}
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <form action="{% url 'approve_bank_detail' detail.id %}" method="POST">
+                                        {% csrf_token %}
+                                        <button class="btn btn-sm btn-success rounded-pill px-3 shadow-sm">Approve</button>
+                                    </form>
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#rejectModal{{ detail.id }}">Reject</button>
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">Processed on {{ detail.updated_at|date:"d M" }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <div class="modal fade" id="rejectModal{{ detail.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow" style="border-radius: 20px;">
+                                <form action="{% url 'reject_bank_detail' detail.id %}" method="POST">
+                                    {% csrf_token %}
+                                    <div class="modal-header border-0 pb-0">
+                                        <h5 class="fw-bold">Reject Bank Details</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body p-4">
+                                        <label class="form-label small fw-bold">Reason for Rejection</label>
+                                        <textarea name="reason" class="form-control border-0 bg-light p-3" rows="3" placeholder="Explain why you are rejecting (e.g. Invalid IFSC Code)" style="border-radius: 12px;" required></textarea>
+                                    </div>
+                                    <div class="modal-footer border-0 pt-0">
+                                        <button type="submit" class="btn btn-danger w-100 py-3 rounded-pill fw-bold shadow-sm">Confirm Rejection</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">No records found for status: {{ current_status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if details.has_other_pages %}
+            <div class="d-flex justify-content-center mt-4 pb-4">
+                <div class="pagination-container" style="background: #fff; border-radius: 50px; padding: 10px 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: inline-flex; align-items: center; gap: 15px;">
+                    <ul class="pagination mb-0 align-items-center" style="list-style: none; display: flex; padding: 0;">
+                        
+                        {% if details.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link border-0 text-info fw-bold" href="?status={{ current_status }}&page={{ details.previous_page_number }}" style="text-decoration: none; padding: 8px 15px;">
+                                    « Prev
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for i in details.paginator.page_range %}
+                            {% if details.number == i %}
+                                <li class="page-item active">
+                                    <span class="page-link border-0 shadow-sm" style="background-color: #00a9e0 !important; color: white !important; border-radius: 10px; padding: 8px 15px; font-weight: bold;">{{ i }}</span>
+                                </li>
+                            {% elif i > details.number|add:'-3' and i < details.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link border-0 text-dark" href="?status={{ current_status }}&page={{ i }}" style="text-decoration: none; padding: 8px 15px; font-weight: 600;">{{ i }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if details.has_next %}
+                            <li class="page-item">
+                                <a class="page-link border-0 text-info fw-bold" href="?status={{ current_status }}&page={{ details.next_page_number }}" style="text-decoration: none; padding: 8px 15px;">
+                                    Next »
+                                </a>
+                            </li>
+                        {% endif %}
+
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

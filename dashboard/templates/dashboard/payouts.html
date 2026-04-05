@@ -1,0 +1,154 @@
+{% extends 'dashboard/base.html' %}
+{% load mathfilters %}
+{% block content %}
+
+<style>
+    .payout-card { border-radius: 20px; border: none; overflow: hidden; }
+    .bank-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px;
+        min-width: 200px;
+    }
+    .amount-badge {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #1e293b;
+    }
+    .commission-box {
+        background: #fff1f2;
+        color: #e11d48;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.8rem;
+        display: inline-block;
+    }
+    .net-pay-text {
+        font-size: 0.9rem;
+        color: #059669;
+        font-weight: 700;
+    }
+    .status-pill {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .st-pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .st-processed { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .st-rejected { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Payout <span style="color: var(--vf-blue);">Settlements</span></h2>
+            <p class="text-muted small">Automatic settlements process on the 5th of every month for balances > ₹1000</p>
+        </div>
+        <div class="bg-white px-3 py-2 rounded-pill shadow-sm border fw-bold text-dark">
+            <i class="fas fa-wallet text-success me-2"></i>Total Records: {{ requests.paginator.count }}
+        </div>
+    </div>
+
+    <div class="card payout-card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table align-middle table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Partner Details</th>
+                        <th>Bank / Payment Info</th>
+                        <th>Wallet Amount</th>
+                        <th>Platform Fee (1%)</th>
+                        <th>Net to Transfer</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ req.partner.username }}</div>
+                            <div class="text-muted small">{{ req.created_at|date:"d M, Y" }}</div>
+                        </td>
+                        <td>
+                            <div class="bank-box">
+                                {% if req.partner.bank_details %}
+                                    <div class="small fw-bold text-dark">{{ req.partner.bank_details.bank_name }}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                        A/c: {{ req.partner.bank_details.account_number }}<br>
+                                        IFSC: {{ req.partner.bank_details.ifsc_code }}
+                                    </div>
+                                {% else %}
+                                    <span class="text-danger small">No Bank Linked</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td><div class="amount-badge">₹{{ req.amount }}</div></td>
+                        <td>
+                            <div class="commission-box">
+                                - ₹{{ req.amount|mul:0.01|floatformat:2 }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="net-pay-text">
+                                ₹{{ req.amount|mul:0.99|floatformat:2 }}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-pill st-{{ req.status }}">● {{ req.status|upper }}</span>
+                        </td>
+                        <td class="text-end pe-4">
+                            {% if req.status == 'pending' %}
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <form action="{% url 'approve_payout' req.id %}" method="POST">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm">Approve</button>
+                                    </form>
+                                    <form action="{% url 'reject_payout' req.id %}" method="POST">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-light border rounded-pill px-3">Reject</button>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <small class="text-muted fw-bold">PROCESSED</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-5 text-muted">No payout records found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if requests.has_other_pages %}
+    <div class="d-flex justify-content-center mt-5 mb-5">
+        <div class="pagination-container" style="background: #fff; border-radius: 50px; padding: 10px 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: inline-flex; align-items: center; gap: 15px;">
+            <ul class="pagination mb-0 align-items-center" style="list-style: none; display: flex; padding: 0;">
+                {% if requests.has_previous %}
+                    <li class="page-item"><a class="page-link border-0 text-info fw-bold" href="?page={{ requests.previous_page_number }}" style="text-decoration: none; padding: 8px 15px;">« Prev</a></li>
+                {% endif %}
+
+                {% for i in requests.paginator.page_range %}
+                    {% if requests.number == i %}
+                        <li class="page-item active"><span class="page-link border-0 shadow-sm" style="background-color: #00a9e0 !important; color: white !important; border-radius: 10px; padding: 8px 15px; font-weight: bold;">{{ i }}</span></li>
+                    {% elif i > requests.number|add:'-3' and i < requests.number|add:'3' %}
+                        <li class="page-item"><a class="page-link border-0 text-dark" href="?page={{ i }}" style="text-decoration: none; padding: 8px 15px; font-weight: 600;">{{ i }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if requests.has_next %}
+                    <li class="page-item"><a class="page-link border-0 text-info fw-bold" href="?page={{ requests.next_page_number }}" style="text-decoration: none; padding: 8px 15px;">Next »</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

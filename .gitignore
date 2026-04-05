@@ -1,0 +1,19 @@
+# Virtual Environment
+env/
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Database (Agar aap local sqlite use kar rahe ho to)
+db.sqlite3
+
+# Media & Static
+/media/
+/static/
+
+# Environment variables / Keys
+.env
+firebase_key.json

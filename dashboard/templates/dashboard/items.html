@@ -1,0 +1,186 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+
+<style>
+    /* Table Styling */
+    .user-card { border-radius: 20px; overflow: hidden; background: #fff; }
+    .table thead th { 
+        font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; 
+        color: #64748b; background: #f8fafc; padding: 15px; 
+    }
+    
+    /* Price Input & Update Button Fix */
+    .price-input {
+        width: 100px;
+        border-radius: 10px 0 0 10px !important;
+        border: 1px solid #e2e8f0;
+        font-weight: 700;
+        text-align: center;
+    }
+    .update-btn {
+        border-radius: 0 10px 10px 0 !important;
+        padding: 5px 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    /* 🔥 PAGING FIX: Sundar Buttons 🔥 */
+    .pagination { gap: 5px; }
+    .page-link {
+        border: none !important;
+        color: #64748b !important;
+        border-radius: 8px !important;
+        padding: 8px 14px;
+        font-weight: 600;
+        transition: 0.3s;
+    }
+    .page-item.active .page-link {
+        background-color: var(--vf-blue) !important;
+        color: white !important;
+        box-shadow: 0 4px 10px rgba(0, 169, 224, 0.3);
+    }
+    .page-item:hover .page-link {
+        background-color: #f1f5f9;
+    }
+
+    /* Status Badge */
+    .status-active { color: #10b981; font-weight: 700; font-size: 0.75rem; }
+    .status-inactive { color: #ef4444; font-weight: 700; font-size: 0.75rem; }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Laundry <span style="color: var(--vf-blue);">Items</span></h2>
+            <p class="text-muted mb-0">Total {{ items.paginator.count }} items in inventory</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-vf-blue rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                <i class="fas fa-plus me-1"></i> Add Item
+            </button>
+        </div>
+    </div>
+    </div>
+
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold">Add New <span style="color: var(--vf-blue);">Laundry Item</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'add_new_item' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Item Name</label>
+                        <input type="text" name="name" class="form-control border-0 bg-light p-3" placeholder="e.g. Cotton Shirt" required style="border-radius: 12px;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Service Category</label>
+                        <select name="category" class="form-select border-0 bg-light p-3" style="border-radius: 12px;" required>
+                            <option value="">Select Category</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Sub Category (Optional)</label>
+                        <select name="subcategory" class="form-select border-0 bg-light p-3" style="border-radius: 12px;">
+                            <option value="">None</option>
+                            {% for sub in subcategories %}
+                                <option value="{{ sub.id }}">{{ sub.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Base Price (₹)</label>
+                        <input type="number" name="price" class="form-control border-0 bg-light p-3" placeholder="0.00" required style="border-radius: 12px;">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="submit" class="btn btn-vf-blue w-100 py-3 rounded-pill shadow-sm">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+    <div class="card border-0 shadow-sm user-card">
+        <div class="table-responsive">
+            <table class="table align-middle table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Item Details</th>
+                        <th>Category</th>
+                        <th>Price (₹)</th>
+                        <th>Status</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ item.name }}</div>
+                            <small class="text-muted">{{ item.subcategory.name }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-info bg-opacity-10 text-info px-3 py-2" style="border-radius: 8px;">
+                                {{ item.type.name }}
+                            </span>
+                        </td>
+                        <td>
+                            <form action="{% url 'update_price' item.id %}" method="POST" class="d-flex">
+                                {% csrf_token %}
+                                <input type="number" name="new_price" value="{{ item.price }}" class="form-control form-control-sm price-input">
+                                <button type="submit" class="btn btn-sm btn-vf-blue update-btn">Update</button>
+                            </form>
+                        </td>
+                        <td>
+                            {% if item.is_active %}
+                                <span class="status-active"><i class="fas fa-circle me-1" style="font-size: 7px;"></i> ACTIVE</span>
+                            {% else %}
+                                <span class="status-inactive"><i class="fas fa-circle me-1" style="font-size: 7px;"></i> INACTIVE</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'toggle_item' item.id %}" class="btn btn-sm {% if item.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %} rounded-pill px-3 py-1">
+                                {% if item.is_active %}Disable{% else %}Enable{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if items.has_other_pages %}
+    <div class="d-flex justify-content-center mt-5 pb-5">
+        <nav>
+            <ul class="pagination shadow-sm p-2 bg-white rounded-pill">
+                {% if items.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">&laquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ items.previous_page_number }}">Prev</a></li>
+                {% endif %}
+
+                {% for i in items.paginator.page_range %}
+                    {% if items.number == i %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                    {% elif i > items.number|add:'-3' and i < items.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if items.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ items.next_page_number }}">Next</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ items.paginator.num_pages }}">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

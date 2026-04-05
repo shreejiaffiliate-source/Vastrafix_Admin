@@ -1,0 +1,158 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+
+<style>
+    .order-card-detail { border-radius: 20px; border: none; }
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed #f1f5f9;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .label-text { color: #64748b; font-weight: 500; font-size: 0.9rem; }
+    .value-text { color: #1e293b; font-weight: 600; font-size: 0.9rem; }
+    
+    .invoice-table thead th {
+        background-color: #f8fafc;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        color: #64748b;
+        border: none;
+    }
+    .total-section {
+        background-color: #f0f9ff;
+        border-radius: 12px;
+        padding: 20px;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <a href="{% url 'admin_orders' %}" class="btn btn-light rounded-pill px-3 shadow-sm border">
+            <i class="fas fa-arrow-left me-2"></i> Back to Orders
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card order-card-detail shadow-sm p-4 mb-4">
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold" style="color: var(--vf-blue);">#VF-{{ order.id }}</h3>
+                    <span class="badge rounded-pill px-3 py-2" style="background: #e0f2fe; color: #0369a1;">
+                        {{ order.status|upper }}
+                    </span>
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="fw-bold mb-3">Customer Details</h6>
+                    <div class="info-row">
+                        <span class="label-text">Name</span>
+                        <span class="value-text">{{ order.user.username }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label-text">Phone</span>
+                        <span class="value-text">{{ order.phone }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label-text">Date</span>
+                        <span class="value-text">{{ order.created_at|date:"d M Y, h:i A" }}</span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="fw-bold mb-3">Payment Information</h6>
+                    
+                    <div class="info-row">
+                        <span class="label-text">Method</span>
+                        <span class="value-text text-uppercase">{{ order.payment_mode|upper }}</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="label-text">Payment Status</span>
+                        <span class="value-text">
+                            {% if order.is_paid or payment %}
+                                <span class="text-success fw-bold">● PAID</span>
+                            {% else %}
+                                <span class="text-danger fw-bold">● UNPAID</span>
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    {% if order.payment_mode|lower == 'online' %}
+                        <div class="p-3 mt-2 rounded-3" style="background: #f0f9ff; border: 1px solid #bae6fd;">
+                            {% if payment %}
+                                <div class="info-row mb-1 border-0">
+                                    <span class="label-text" style="font-size: 0.7rem;">Razorpay Payment ID</span>
+                                    <span class="value-text text-primary" style="font-size: 0.75rem;">{{ payment.razorpay_payment_id }}</span>
+                                </div>
+                                <div class="info-row mb-0 border-0">
+                                    <span class="label-text" style="font-size: 0.7rem;">Gateway Status</span>
+                                    <span class="badge bg-success" style="font-size: 0.6rem;">{{ payment.status|upper }}</span>
+                                </div>
+                            {% else %}
+                                <div class="text-muted small text-center">
+                                    <i class="fas fa-search me-1"></i> No online transaction record linked yet.
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <div class="info-row mt-3">
+                        <span class="label-text">Total Amount</span>
+                        <span class="value-text text-success" style="font-size: 1.2rem;">₹{{ order.total_amount }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card order-card-detail shadow-sm p-4">
+                <h5 class="fw-bold mb-4">Clothes in this Order</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th class="text-center">Quantity</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for oi in items %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ oi.item.name }}</div>
+                                    <small class="text-muted">{{ oi.item.type.name }}</small>
+                                </td>
+                                <td class="text-center fw-bold">{{ oi.quantity }}</td>
+                                <td class="text-end">₹{{ oi.price }}</td>
+                                <td class="text-end fw-bold">₹{{ oi.price }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center py-4">No items found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row justify-content-end mt-4">
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between mb-2 px-2">
+                            <span class="text-muted">Delivery Charge</span>
+                            <span class="fw-bold">₹{{ order.delivery_charge }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between total-section">
+                            <h5 class="fw-bold mb-0">Grand Total</h5>
+                            <h5 class="fw-bold mb-0" style="color: var(--vf-blue);">₹{{ order.total_amount }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
