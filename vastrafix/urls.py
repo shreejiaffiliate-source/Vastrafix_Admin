@@ -2,8 +2,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.shortcuts import redirect # ✅ Ye line MISSING hai aapki file mein
+
 
 urlpatterns = [
+    # ✅ Ye line sabse pehle add karo (Direct Dashboard par bhej degi)
+    path('', lambda request: redirect('dashboard/', permanent=True)),
     path('apipayments/', include('payments.urls')),
     path('api/orders/', include('orders.urls')),
     path('api/services/', include('services.urls')),

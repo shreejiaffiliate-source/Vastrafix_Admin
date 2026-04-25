@@ -281,6 +281,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 # ACCEPT ORDER
 # ===============================
 from django.utils import timezone # Ye upar import karo
+from django.db.models import Max # 🔥 File ke upar check kar lena agar import na ho toh
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -290,34 +291,42 @@ def accept_order(request, order_id):
         return Response({"error": "Only partner allowed"}, status=403)
 
     try:
+        # Check karo ki order pending hai aur kisi ne accept nahi kiya hai
         order = Order.objects.get(id=order_id, status="pending", partner__isnull=True)
     except Order.DoesNotExist:
         return Response({"error": "Order not available"}, status=404)
 
+    # 🔥 MAIN FIX: Partner Wise Counting Logic
+    # Hum check karenge ki is partner ke paas pehle se kitne orders hain
+    max_num = Order.objects.filter(partner=request.user).aggregate(Max('partner_order_number'))['partner_order_number__max']
+    
+    if max_num is None:
+        order.partner_order_number = 1 # Pehla naya partner = #1
+    else:
+        order.partner_order_number = max_num + 1 # Purana partner = Pichla + 1
+
+    # Partner assign karo aur status update karo
     order.partner = request.user
     order.status = "accepted"
     now = timezone.now()
     order.accepted_at = now
 
-    # Delivery deadline
+    # Delivery deadline logic (Aapka purana logic waisa hi hai)
     if order.delivery_mode.lower() == "premium":
         order.deadline = now + timedelta(hours=6)
-
     elif order.delivery_mode.lower() == "1_day":
         order.deadline = now + timedelta(hours=24)
-
     else:
         order.deadline = now + timedelta(days=3)
 
     order.save()
     
-    # 🔥 Pehle se assigned partner ke liye thread chalu karo
+    # Baaki notifications aur threading logic same rahega...
     threading.Thread(
         target=send_deadline_push,
         args=(order.id,)
     ).start()
 
-    # 🔥 DATABASE NOTIFICATION
     create_notification(
         user=order.user,
         title="Order Accepted",
@@ -325,11 +334,7 @@ def accept_order(request, order_id):
         icon_type="check"
     )
 
-    # 🔥 PUSH NOTIFICATION (SAFE)
     token = getattr(order.user, "fcm_token", None)
-    
-    print("🚨 CHECKING TOKEN FOR USER:", order.user.username, " | TOKEN MILA:", token)
-
     if token:
         try:
             send_push(
@@ -340,8 +345,10 @@ def accept_order(request, order_id):
         except Exception as e:
             print("Push notification failed:", e)        
 
-    return Response({"message": "Order accepted"})
-
+    return Response({
+        "message": "Order accepted",
+        "partner_order_number": order.partner_order_number # Flutter ke liye return kar diya
+    })
 
 # Customer Order History
 class CustomerOrderListView(generics.ListAPIView):
@@ -856,8 +863,6 @@ def partner_earnings(request):
             # delivered orders ke saare items ka total category wise
             for order in orders_query:
                 for item in order.order_items.all():
-                    # Maan lete hain item model me 'item_type' ya 'category' naam ki field hai
-                    # Agar ye line crash kare toh niche wala dummy logic use hoga
                     cat_name = item.item.type.name 
                     category_stats[cat_name] = category_stats.get(cat_name, 0) + (item.price * item.quantity)
 

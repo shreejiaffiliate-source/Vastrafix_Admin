@@ -5,7 +5,7 @@ from accounts.models import Address, User
 from services.models import Item
 from django.utils import timezone
 from accounts.admin import User
-
+from django.db.models import Max # 🔥 Max number nikalne ke liye
 
 
 class Order(models.Model):
@@ -47,6 +47,8 @@ class Order(models.Model):
          blank=True,
          related_name='assigned_orders'
 )
+    
+    partner_order_number = models.PositiveIntegerField(null=True, blank=True)
     
     address = models.ForeignKey(
         Address,
@@ -90,25 +92,34 @@ class Order(models.Model):
     is_deadline_notified = models.BooleanField(default=False) # 🔥 Ye naya field add karein
     
     def save(self, *args, **kwargs):
-    # Jab status 'accepted' ho
-      if self.status == 'accepted':
-        # Agar accepted_at nahi hai toh abhi ka time set karo
-        if not self.accepted_at:
-            self.accepted_at = timezone.now()
-        
-        # Deadline calculation (Force calculation)
-        mode = (self.delivery_mode or "Normal").lower()
-        
-        if 'premium' in mode:
-            self.deadline = self.accepted_at + timedelta(hours=6)
-        elif '1 day' in mode or 'one day' in mode:
-            self.deadline = self.accepted_at + timedelta(hours=24)
-        else:
-            # Normal: 48 Hours (As you requested)
-            self.deadline = self.accepted_at + timedelta(hours=48)
+        # 1. 🔥 NAYA LOGIC: Jaise hi partner assign ho (chahe pending ho), usko permanent number de do
+        if self.partner and not self.partner_order_number:
+            from django.db.models import Max
+            max_val = Order.objects.filter(partner=self.partner).aggregate(Max('partner_order_number'))['partner_order_number__max']
             
-      super().save(*args, **kwargs)
- 
+            if max_val is None:
+                self.partner_order_number = 1
+            else:
+                self.partner_order_number = max_val + 1
+
+        # 2. PURANA LOGIC: Jab status 'accepted' ho
+        if self.status == 'accepted':
+            # Agar accepted_at nahi hai toh abhi ka time set karo
+            if not self.accepted_at:
+                self.accepted_at = timezone.now()
+            
+            # Deadline calculation (Force calculation)
+            mode = (self.delivery_mode or "Normal").lower()
+            
+            if 'premium' in mode:
+                self.deadline = self.accepted_at + timedelta(hours=6)
+            elif '1 day' in mode or 'one day' in mode:
+                self.deadline = self.accepted_at + timedelta(hours=24)
+            else:
+                # Normal: 48 Hours
+                self.deadline = self.accepted_at + timedelta(hours=48)
+                
+        super().save(*args, **kwargs) 
 
     def __str__(self):
         return f"Order : {self.user.id}"

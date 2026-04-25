@@ -28,8 +28,13 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ["id", "status", "total_amount", "pickup_datetime","delivery_mode","delivery_charge","payment_mode","order_items", "address_id", "created_at", "partner_phone"]
-        read_only_fields = ["total_amount", "status", "created_at"]
+        # 🔥 'partner_order_number' add kiya
+        fields = [
+            "id", "partner_order_number", "status", "total_amount", 
+            "pickup_datetime", "delivery_mode", "delivery_charge", 
+            "payment_mode", "order_items", "address_id", "created_at", "partner_phone"
+        ]
+        read_only_fields = ["total_amount", "status", "created_at", "partner_order_number"]
 
     def create(self, validated_data):
         items_data = validated_data.pop('order_items')
@@ -97,6 +102,7 @@ class PartnerOrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id",
+            "partner_order_number", # 🔥 YEH HAI MAIN FIX: Partner ko uska apna sequence dikhega
             "user_name",
             "phone",
             "total_amount",

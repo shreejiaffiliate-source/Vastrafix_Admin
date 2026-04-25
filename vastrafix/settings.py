@@ -21,13 +21,17 @@ from django.conf import settings
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# settings.py
+# --- Email Config ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'kanadabhi235@gmail.com' # Aapka Gmail
-EMAIL_HOST_PASSWORD = 'almlyrufwgbjpwqm' # Google App Password (Normal password nahi)
+EMAIL_HOST_USER = 'shreejiaffiliate@gmail.com'
+EMAIL_HOST_PASSWORD = 'pxbqlsrnwpfjlgwp'
+
+# Yahan naam 'Vastrafix' rakhna hai
+DEFAULT_FROM_EMAIL = 'Vastrafix <shreejiaffiliate@gmail.com>'
+SERVER_EMAIL = 'shreejiaffiliate@gmail.com'
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -37,7 +41,9 @@ SECRET_KEY = "django-insecure-d#(9#6t=qv5d22^lb$a@l*g*y_ekv6c*n9auf=_d3+=xg%^$=o
 DEBUG = True
 
 # ✅ CORRECT (All strings in one list)
-ALLOWED_HOSTS = ['*', '10.12.95.38', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['vastrafix.shreejifintech.com', 'www.vastrafix.shreejifintech.com', '127.0.0.1', 'localhost']
+CSRF_TRUSTED_ORIGINS: ["https://www.vastrafix.shreejifintech.com"]
+
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
@@ -98,10 +104,15 @@ REST_FRAMEWORK = {
 
 
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-}
+from datetime import timedelta
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=365), # Seedha 1 saal ka access
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=365),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 
 # settings.py
@@ -216,7 +227,8 @@ RAZORPAYX_ACCOUNT_NUMBER = "2323230049561854" # Virtual Account No
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static",]
-
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # settings.py ke ekdum niche dalo
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0' # Agar 6379 port hai toh wo dalo
