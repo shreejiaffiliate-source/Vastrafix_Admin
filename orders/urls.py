@@ -9,9 +9,9 @@ from .views import (
     CreateOrderView, PartnerAcceptedOrders, PartnerAssignedOrdersView, 
     PartnerPendingOrdersView, UserOrderListView, accept_order, cancel_order, check_service_area, 
     complete_order, create_payout_request, get_order_detail, get_wallet_details, manage_bank_details, partner_earnings, partner_new_orders, partner_accepted_orders, 
-    partner_order_history, get_delivery_configs, update_order_address, 
+    partner_order_history, get_delivery_configs, send_delivery_otp, update_order_address, 
     update_order_status,
-    create_razorpay_order,      # <--- Add this
+    create_razorpay_order, verify_delivery_otp,      # <--- Add this
     verify_razorpay_payment,
     partner_complaints,
     partner_earnings
@@ -56,4 +56,7 @@ urlpatterns = [
     # orders/urls.py mein urlpatterns list ke andar add karein:
 
     path('<int:order_id>/', get_order_detail, name='order-detail'),
+
+    path('<int:order_id>/send-delivery-otp/', send_delivery_otp, name='send-delivery-otp'),
+    path('<int:order_id>/verify-delivery-otp/', verify_delivery_otp, name='verify-delivery-otp'),
 ]

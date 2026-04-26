@@ -25,68 +25,103 @@ from .util import send_otp_via_email
 
 User = get_user_model()
 
-
 # 1. REGISTER VIEW (Signup hote hi OTP jayega)
-class RegisterView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
+from django.core.cache import cache
 
-    def perform_create(self, serializer):
-        user = serializer.save()
-        otp = str(random.randint(100000, 999999)) # Generate OTP
-        user.otp = otp
-        user.save()
+# 1. REGISTER VIEW (User abhi create NAHI hoga, sirf OTP jayega)
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data) 
         
-        try:
-            send_otp_via_email(user.email, otp)
-        except Exception as e:
-            print(f"Error sending email: {e}")
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = str(random.randint(100000, 999999))
+            
+            # 🔥 Sabse bada badlaav: User save karne ki jagah sara data Cache mein daal do 5 minute ke liye
+            signup_data = request.data
+            signup_data['otp'] = otp
+            # Key banayenge email ke naam se
+            cache.set(f"signup_{email}", signup_data, timeout=300) 
+            
+            try:
+                send_otp_via_email(email, otp)
+                return Response({
+                    "success": True, 
+                    "message": "OTP sent to your email"
+                }, status=200)
+            except Exception as e:
+                return Response({"error": "Failed to send email"}, status=500)
+        
+        return Response(serializer.errors, status=400)
 
-# 2. VERIFY OTP VIEW
+# 2. VERIFY OTP VIEW (Ab yahan asli User create hoga)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def verify_signup_otp(request):
     email = request.data.get('email')
-    otp_received = request.data.get('otp')
+    # OTP ko string mein convert karke extra space hata di
+    otp_received = str(request.data.get('otp')).strip() 
 
-    if not email or not otp_received:
-        return Response({"error": "Email and OTP are required"}, status=400)
+    # 1. Cache se data nikaalo
+    cached_data = cache.get(f"signup_{email}")
 
-    try:
-        user = User.objects.filter(email=email).first() 
+    if not cached_data:
+        # Check: Kahin user pehle hi create toh nahi ho gaya?
+        if User.objects.filter(email=email).exists():
+            return Response({"success": True, "message": "User already verified"}, status=200)
+        return Response({"success": False, "error": "OTP Expired. Please signup again."}, status=400)
+
+    # 2. OTP Matching Logic
+    if str(cached_data.get('otp')) == otp_received:
+        try:
+            user_data = cached_data.copy()
+            user_data.pop('otp', None) # Serializer ke liye OTP hatao
+
+            serializer = RegisterSerializer(data=user_data)
+            if serializer.is_valid():
+                user = serializer.save()
+                user.is_verified = True
+                user.is_active = True
+                user.save()
+                
+                cache.delete(f"signup_{email}") # Kaam khatam, cache saaf
+                
+                # 🔥 EKDUM CLEAR SUCCESS RESPONSE
+                return Response({
+                    "success": True, 
+                    "message": "Registration successful"
+                }, status=201)
+            else:
+                # Agar phone ya email pehle se hai
+                return Response({"success": False, "error": serializer.errors}, status=400)
+        except Exception as e:
+            return Response({"success": False, "error": str(e)}, status=500)
+    else:
+        # ❌ Agar OTP match nahi hua
+        return Response({"success": False, "error": "Invalid OTP. Please check again."}, status=400)
     
-        if not user:
-            return Response({"error": "User not found"}, status=404)
-        
-        if user.otp == otp_received:
-            user.is_verified = True
-            user.otp = None # Clear OTP after success
-            user.save()
-            return Response({"message": "Email verified successfully!"}, status=200)
-        else:
-            return Response({"error": "Invalid OTP"}, status=400)
-            
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=404)
-
-
+    
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def resend_otp_view(request):
     email = request.data.get('email')
-    try:
-        # filter().first() use karein taaki 2 users hone par crash na ho
-        user = User.objects.filter(email=email).first()
+    # 🔥 Database ki jagah Cache mein dhoondo
+    cached_data = cache.get(f"signup_{email}")
+    
+    if cached_data:
+        otp = str(random.randint(100000, 999999))
+        cached_data['otp'] = otp # Naya OTP update karo
+        cache.set(f"signup_{email}", cached_data, timeout=300) # Wapas save karo
         
-        if user:
-            otp = str(random.randint(100000, 999999))
-            user.otp = otp
-            user.save()
+        try:
+            send_otp_via_email(email, otp)
+            return Response({"success": True, "message": "New OTP Sent"}, status=200)
+        except Exception as e:
+            return Response({"success": False, "error": "Email fail"}, status=500)
             
-            send_otp_via_email(user.email, otp)
-            return Response({"success": True, "message": "OTP Sent"}, status=200)
-        return Response({"success": False, "error": "User not found"}, status=404)
-    except Exception as e:
-        return Response({"success": False, "error": str(e)}, status=500)
+    return Response({"success": False, "error": "Signup session expired. Please signup again."}, status=404)
     
 
 class LoginView(APIView):

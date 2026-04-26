@@ -140,3 +140,19 @@ def start_deadline_checker():
     # Thread ko start karo
     thread = threading.Thread(target=check_loop, daemon=True)
     thread.start()
+
+
+# 🔥 NAYA: OTP ya simple message bhejane ke liye (Isko aapke purane code ke niche dalo)
+def send_push_notification(token, title, body):
+    from vastrafix.core.firebase import send_push # Aapka existing firebase logic
+    try:
+        send_push(
+            token=token,
+            title=title,
+            body=body,
+            data={"type": "otp_notification"}
+        )
+        return True
+    except Exception as e:
+        print(f"❌ OTP Push Error: {e}")
+        return False

@@ -24,6 +24,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     order_items = OrderItemSerializer(many=True)
     address_id = serializers.IntegerField(write_only=True)
+    phone = serializers.CharField(required=False, allow_null=True)
     partner_phone = serializers.CharField(source="partner.phone", read_only=True) # "partner" ya jo bhi related name unhone Order model me delivery boy ke liye rakha hai
 
     class Meta:
@@ -32,7 +33,8 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             "id", "partner_order_number", "status", "total_amount", 
             "pickup_datetime", "delivery_mode", "delivery_charge", 
-            "payment_mode", "order_items", "address_id", "created_at", "partner_phone"
+            "payment_mode", "order_items", "address_id", "created_at", "partner_phone","phone",
+            "delivery_otp"  # 🔥 YE ADD KIYA: Taaki Customer ko OTP dikhe
         ]
         read_only_fields = ["total_amount", "status", "created_at", "partner_order_number"]
 
@@ -42,6 +44,7 @@ class OrderSerializer(serializers.ModelSerializer):
         address_id = validated_data.pop('address_id')
         address = Address.objects.get(id=address_id, user=user)
         
+        order_phone = validated_data.get('phone') or user.phone
         pickup_datetime = validated_data.get("pickup_datetime")
 
         # 👇 FRONTEND SE AAYA HUA DELIVERY DATA GET KARNA (Default values ke sath)
@@ -57,7 +60,7 @@ class OrderSerializer(serializers.ModelSerializer):
             amount=amount,  # ✅ Ye field ab Order model me hai, toh yahan bhi save karna hoga
             user=user,
             address=address,
-            phone=user.phone,
+            phone=order_phone, # 👈 Yahan ab sahi number save hoga
             pickup_datetime=pickup_datetime,  
             delivery_mode=delivery_mode,  # 👈 Yahan save ho gaya
             delivery_charge=delivery_charge,

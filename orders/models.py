@@ -34,6 +34,7 @@ class Order(models.Model):
     razorpay_payment_id = models.CharField(max_length=100, null=True, blank=True)
     razorpay_signature = models.CharField(max_length=200, null=True, blank=True)
     is_paid = models.BooleanField(default=False)
+    delivery_otp = models.CharField(max_length=6, null=True, blank=True) # 🔥 OTP save karne ke liye
     
     # pickup date and time
     

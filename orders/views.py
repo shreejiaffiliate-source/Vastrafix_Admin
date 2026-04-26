@@ -22,7 +22,8 @@ from vastrafix.core.firebase import send_broadcast_push # Broadcast push ke liye
 from accounts.models import User # Partner tokens ke liye User model import karna zaruri hai
 from payments.models import PayoutRequest
 from payments.models import PartnerWallet
-from .models import Order, DeliveryConfig
+from .models import Order, DeliveryConfig, UserFCMToken
+import random
 
 # delivery config 
 
@@ -1116,3 +1117,76 @@ def get_order_detail(request, order_id):
         return Response(serializer.data)
     except Order.DoesNotExist:
         return Response({"error": "Order not found"}, status=404)
+
+
+# 1. OTP Generate karke bhejne ki API
+from .utils import send_push_notification # Agar aapne utils mein notification function banaya hai
+
+@api_view(['POST'])
+def send_delivery_otp(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+        otp = str(random.randint(1000, 9999))
+        order.delivery_otp = otp
+        order.save()
+
+        # 🔥 UPDATE: Direct User model se fcm_token uthao (Jaisa admin mein dikh raha hai)
+        token = order.user.fcm_token 
+
+        if token:
+            print(f"DEBUG: Found token for {order.user.username}, sending notification...")
+            from .utils import send_push_notification
+            
+            success = send_push_notification(
+                token, 
+                "Delivery OTP 🔑", 
+                f"Your delivery OTP for Order #{order.id} is {otp}. Please share this code with the partner only after receiving your clothes."
+            )
+            
+            if success:
+                print("✅ Notification successfully sent to Firebase!")
+            else:
+                print("❌ Firebase failed to send notification.")
+        else:
+            # Agar Admin panel mein token khali hota toh ye chalta
+            print(f"⚠️ ERROR: No FCM token found for user: {order.user.username}")
+
+        print(f"DEBUG: Delivery OTP for Order {order_id} is: {otp}")
+        return Response({"success": True, "message": "OTP sent to customer"})
+
+    except Order.DoesNotExist:
+        return Response({"success": False, "error": "Order not found"})
+    except Exception as e:
+        print(f"❌ View Error: {e}")
+        return Response({"success": False, "error": str(e)})
+    
+
+# 2. OTP Verify karke Order Delivered karne ki API
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_delivery_otp(request, order_id):
+    otp_received = request.data.get('otp')
+    try:
+        order = Order.objects.get(id=order_id)
+        
+        if order.delivery_otp == otp_received:
+            order.status = 'delivered'
+            order.delivery_otp = None  # Verify hone ke baad OTP clear
+            order.save()
+
+            # 🔥 SUCCESS NOTIFICATION: Customer ko batao ki delivery ho gayi
+            token = order.user.fcm_token
+            if token:
+                from .utils import send_push_notification
+                send_push_notification(
+                    token, 
+                    "Order Delivered 🎉", 
+                    f"Order #{order.id} has been delivered successfully. Enjoy your fresh clothes!"
+                )
+
+            return Response({"success": True, "message": "Order delivered successfully!"})
+        else:
+            return Response({"success": False, "message": "Invalid OTP. Please check again."}, status=400)
+          
+    except Order.DoesNotExist:
+        return Response({"success": False, "message": "Order not found"}, status=404)

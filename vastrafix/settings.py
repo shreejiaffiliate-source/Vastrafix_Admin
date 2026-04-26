@@ -17,11 +17,11 @@ from django.conf import settings
 
 
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Build paths inside the project like this: BASE_DIR / 'subdir'.  # Single slash aage aur piche
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# --- Email Config ---
+# settings.py mein ye replace karo
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -29,8 +29,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'shreejiaffiliate@gmail.com'
 EMAIL_HOST_PASSWORD = 'pxbqlsrnwpfjlgwp'
 
-# Yahan naam 'Vastrafix' rakhna hai
-DEFAULT_FROM_EMAIL = 'Vastrafix <shreejiaffiliate@gmail.com>'
+# Is format ko aise likho, bina bracket ke try karo agar issue aa raha hai
+DEFAULT_FROM_EMAIL = 'Vastrafix <shreejiaffiliate@gmail.com>' 
 SERVER_EMAIL = 'shreejiaffiliate@gmail.com'
 
 
