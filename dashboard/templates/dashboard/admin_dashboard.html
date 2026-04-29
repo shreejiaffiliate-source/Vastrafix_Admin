@@ -50,79 +50,85 @@
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="quick-stat-box shadow-sm d-flex align-items-center">
-                <div class="me-3 bg-light-primary p-3 rounded-circle" style="background: #e0f2fe;">
+        <div class="col-md-3">
+            <div class="quick-stat-box shadow-sm d-flex align-items-center h-100">
+                <div class="me-3 p-3 rounded-circle" style="background: #e0f2fe;">
                     <i class="fas fa-truck-loading text-primary"></i>
                 </div>
                 <div>
                     <small class="text-muted d-block">Today's Pickups</small>
-                    <span class="fw-bold fs-5">{{ today_orders_pickup }} Pending</span>
+                    <span class="fw-bold fs-6">{{ today_orders_pickup }} Pending</span>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="quick-stat-box shadow-sm d-flex align-items-center" style="border-left-color: var(--vf-green);">
+
+        <div class="col-md-3">
+            <div class="quick-stat-box shadow-sm d-flex align-items-center h-100" style="border-left-color: var(--vf-green);">
                 <div class="me-3 p-3 rounded-circle" style="background: #ecfdf5;">
                     <i class="fas fa-coins text-success"></i>
                 </div>
                 <div>
                     <small class="text-muted d-block">Today's Earnings</small>
-                    <span class="fw-bold fs-5">₹{{ today_total_earnings }}</span>
+                    <span class="fw-bold fs-6">₹{{ today_total_earnings }}</span>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="quick-stat-box shadow-sm d-flex align-items-center" style="border-left-color: #6366f1;">
+
+        <div class="col-md-3">
+            <div class="quick-stat-box shadow-sm d-flex align-items-center h-100" style="border-left-color: #10b981;">
+                <div class="me-3 p-3 rounded-circle" style="background: #d1fae5;">
+                    <i class="fas fa-wallet text-success" style="color: #10b981;"></i>
+                </div>
+                <div>
+                    <small class="text-muted d-block">Total Revenue</small>
+                    <span class="fw-bold fs-6">₹{{ total_revenue|floatformat:0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="quick-stat-box shadow-sm d-flex align-items-center h-100" style="border-left-color: #6366f1;">
                 <div class="me-3 p-3 rounded-circle" style="background: #eef2ff;">
                     <i class="fas fa-user-check text-indigo" style="color: #6366f1;"></i>
                 </div>
                 <div>
                     <small class="text-muted d-block">Partners On-Duty</small>
-                    <span class="fw-bold fs-5">{{ online_partners_count }} Active</span>
+                    <span class="fw-bold fs-6">{{ online_partners_count }} Active</span>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row g-4 mb-5">
-    <div class="col-md-3">
-        <div class="card stat-card shadow-sm p-4 text-white h-100" style="background: linear-gradient(135deg, #10b981, #059669);">
-            <h6 class="opacity-75">Total Revenue</h6>
-            <h2 class="display-6 fw-bold mb-0">₹{{ total_revenue|floatformat:2 }}</h2>
-            <i class="fas fa-wallet stat-icon"></i>
+        <div class="col-md-4">
+            <a href="{% url 'admin_payouts' %}" class="text-decoration-none">
+                <div class="card stat-card shadow-sm p-4 h-100" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;">
+                    <h6 class="opacity-75">Payout Requests</h6>
+                    <h2 class="display-6 fw-bold mb-0">{{ pending_payouts_count }}</h2>
+                    <i class="fas fa-hand-holding-usd stat-icon"></i>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card stat-card shadow-sm p-4 text-white h-100" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
+                <h6 class="opacity-75">Admin Profit (1%)</h6>
+                <h2 class="display-6 fw-bold mb-0">₹{{ admin_profit }}</h2>
+                <i class="fas fa-chart-line stat-icon"></i>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <a href="{% url 'admin_partner_wallets' %}" class="text-decoration-none">
+                <div class="card stat-card shadow-sm p-4 text-white h-100" style="background: linear-gradient(135deg, #6366f1, #4338ca);">
+                    <h6 class="opacity-75">Partner Wallets</h6>
+                    <h2 class="display-6 fw-bold mb-0">₹{{ total_wallet_balance|floatformat:2 }}</h2>
+                    <p class="small mb-0 mt-2">View Individual Balances <i class="fas fa-arrow-right small"></i></p>
+                    <i class="fas fa-university stat-icon"></i>
+                </div>
+            </a>
         </div>
     </div>
-
-    <div class="col-md-3">
-        <a href="{% url 'admin_payouts' %}" class="text-decoration-none">
-            <div class="card stat-card shadow-sm p-4 h-100" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;">
-                <h6 class="opacity-75">Payout Requests</h6>
-                <h2 class="display-6 fw-bold mb-0">{{ pending_payouts_count }}</h2>
-                <i class="fas fa-hand-holding-usd stat-icon"></i>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card stat-card shadow-sm p-4 text-white h-100" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
-            <h6 class="opacity-75">Admin Profit (1%)</h6>
-            <h2 class="display-6 fw-bold mb-0">₹{{ admin_profit }}</h2>
-            <i class="fas fa-chart-line stat-icon"></i>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <a href="{% url 'admin_partner_wallets' %}" class="text-decoration-none">
-            <div class="card stat-card shadow-sm p-4 text-white h-100" style="background: linear-gradient(135deg, #6366f1, #4338ca);">
-                <h6 class="opacity-75">Partner Wallets</h6>
-                <h2 class="display-6 fw-bold mb-0">₹{{ total_wallet_balance|floatformat:2 }}</h2>
-                <p class="small mb-0 mt-2">View Individual Balances <i class="fas fa-arrow-right small"></i></p>
-                <i class="fas fa-university stat-icon"></i>
-            </div>
-        </a>
-    </div>
-</div>
 
     <div class="row">
         <div class="col-md-8">

@@ -56,8 +56,9 @@ def check_pickup_reminders():
 
             # 🔥 Step 3: Agar pehle nahi bheja aur partner ka token hai
             if not already_sent and partner.fcm_token:
+                # Updated Strings
                 title = f"Pickup Alert ({label})! 🧺"
-                body = f"Bhai, agle {label} mein aapko {order_count} orders pickup karne jaana hai!"
+                body = f"Reminder: You have {order_count} pickups scheduled in the next {label}."
                 
                 # 1. Mobile Push Notification (Bahar ke liye)
                 send_push(

@@ -148,6 +148,15 @@ class LoginView(APIView):
         if not user.check_password(password):
             return Response({"error": "Wrong password"}, status=400)
         
+        if not user.is_active:
+            return Response(
+                {
+                    "error": "Your account is blocked by admin. Please contact support.",
+                    "is_active": False
+                }, 
+                status=403
+            )
+        
         # 🔥 NAYA: EMAIL VERIFICATION CHECK YAHAN LAGA HAI
         if not getattr(user, 'is_verified', True): # Agar kisi purane user mein field na ho toh error na de
             return Response(
@@ -178,6 +187,7 @@ class LoginView(APIView):
             "refresh": str(refresh),
             "role": user.role,
             "username": user.username,
+            "is_active": user.is_active,
         })
 
 

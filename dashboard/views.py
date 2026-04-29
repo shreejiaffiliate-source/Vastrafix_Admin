@@ -51,8 +51,13 @@ def admin_dashboard_view(request):
     total_orders = Order.objects.count()
     recent_orders = Order.objects.all().order_by('-id')[:5]
     
-    raw_revenue = Payment.objects.filter(status='Success').aggregate(Sum('amount'))['amount__sum'] or 0
-    total_revenue = raw_revenue / 100 
+    # 🔥 FIXED TOTAL REVENUE LOGIC:
+    # Online ho ya COD, agar order 'delivered' hai, toh wo revenue hai.
+    total_revenue_val = Order.objects.filter(status='delivered').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_revenue = float(total_revenue_val)
+
+    # Admin Profit (1% of Delivered Orders)
+    admin_profit = (total_revenue * 1) / 100 
 
     total_delivered_val = Order.objects.filter(status='delivered').aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     admin_profit = (float(total_delivered_val) * 1) / 100

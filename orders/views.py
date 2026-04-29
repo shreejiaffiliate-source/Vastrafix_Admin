@@ -483,7 +483,7 @@ def cancel_order(request, pk):
             AppNotification.objects.create(
                 user=partner_to_notify,
                 title="Order Cancelled ❌",
-                message=f"Order #{order.id} jo aapne accept kiya tha, wo customer ne cancel kar diya hai.",
+                message=f"Order #{order.id} that you accepted has been cancelled by the customer.",
                 icon_type="cancel"
             )
 
@@ -625,50 +625,46 @@ def update_order_status(request, order_id):
     except Order.DoesNotExist:
         return Response({"error": "Order not found or not assigned to you"}, status=404)
      
-    order = Order.objects.get(id=order_id)  # partner wallet ke liye
     new_status = request.data.get('status')
-    
-    #partner walltet ke liye
-    # orders/views.py mein update_order_status ke andar
-
-    if new_status == "delivered" and order.status != "delivered":
-       with transaction.atomic():
-        # 1. Pehle Partner ka wallet dhoondo (Taki commission rate mil sake)
-        wallet, created = PartnerWallet.objects.get_or_create(partner=order.partner)
-        
-        # 🔥 FIX 1: Agar naya wallet hai toh balance ko 0.00 set karo (taki None error na aaye)
-        current_balance = Decimal(str(wallet.balance)) if wallet.balance else Decimal('0.00')
-        # 🔥 FIX: Variable ko sahi se define kiya
-        # 🔥 FIX: Commission ko Decimal mein convert kiya
-        p_rate = wallet.commission_rate if wallet.commission_rate else 1.00
-        commission_percent = Decimal(str(p_rate))        
-        # 🔥 FIX 2: Amount ko safely Decimal mein badlo (agar null ho toh 0 lo)
-        order_amt = order.total_amount if order.total_amount else 0
-        # 2. Calculation (Decimal use karna zaroori hai error se bachne ke liye)
-        total_order_amount = Decimal(str(order_amt))
-        admin_commission = (total_order_amount * commission_percent) / Decimal('100')
-        partner_share = total_order_amount - admin_commission
-
-       # 3. Wallet balance update (Purana balance + Naya share)
-        wallet.balance = current_balance + partner_share
-        wallet.save()
-
-        # 4. Order status update
-        order.status = "delivered"
-        order.save()
-        
-        print(f"✅ Commission Applied: Admin {admin_commission}, Partner {partner_share}")
-    
-    # 🔥 Yahan 'shipping' add kar diya hai
     valid_statuses = ['accepted', 'pickup', 'processing', 'shipping', 'delivered', 'cancelled']
     
     if new_status not in valid_statuses:
         return Response({"error": "Invalid status"}, status=400)
 
+    # 🔥 WALLET CALCULATION LOGIC (Sirf jab status change hoke delivered ho)
+    if new_status == "delivered" and order.status != "delivered":
+        try:
+            with transaction.atomic():
+                # 1. Wallet fetch aur basic safety checks
+                wallet, created = PartnerWallet.objects.get_or_create(partner=order.partner)
+                current_balance = Decimal(str(wallet.balance)) if wallet.balance else Decimal('0.00')
+                
+                # Commission Rate (Default 10% agar set nahi hai toh)
+                p_rate = wallet.commission_rate if wallet.commission_rate else Decimal('10.00')
+                commission_percent = Decimal(str(p_rate))
+                
+                # Amount safety check
+                order_amt = order.total_amount if order.total_amount else Decimal('0.00')
+                total_order_amount = Decimal(str(order_amt))
+
+                # 2. Calculation
+                admin_commission = (total_order_amount * commission_percent) / Decimal('100')
+                partner_share = total_order_amount - admin_commission
+
+                # 3. Update Wallet
+                wallet.balance = current_balance + partner_share
+                wallet.save()
+
+                # Status yahan set kar rahe hain niche save() ek hi baar hoga
+                print(f"✅ Commission Applied: Admin {admin_commission}, Partner {partner_share}")
+        except Exception as e:
+            return Response({"error": f"Wallet update failed: {str(e)}"}, status=500)
+
+    # 🔥 Common Save for all statuses
     order.status = new_status
     order.save()
     
-    # --- NOTIFICATION LOGIC (FIXED) ---
+    # --- NOTIFICATION LOGIC ---
     notification_data = {
         'accepted': {"title": "Order Accepted! ✅", "msg": f"Your order #{order.id} has been accepted.", "icon": "check"},
         'pickup': {"title": "Clothes Picked Up 🚚", "msg": f"Our partner has picked up your clothes for order #{order.id}.", "icon": "delivery"},
@@ -679,32 +675,26 @@ def update_order_status(request, order_id):
 
     if new_status in notification_data:
         data = notification_data[new_status]
-    
+        # Database Notification
         Notification.objects.create(
             user=order.user,
             title=data['title'],
             message=data['msg'],
             icon_type=data['icon']
         )
-    
-    token = order.user.fcm_token
-    if token:
-        try:
-            send_push(
-    token,
-    notification_data[new_status]["title"],
-    notification_data[new_status]["msg"]
-)
-        except Exception as e:
-            print("Push failed:", e)
-    
+        # Push Notification
+        token = order.user.fcm_token
+        if token:
+            try:
+                send_push(token, data["title"], data["msg"])
+            except Exception as e:
+                print("Push failed:", e)
 
     return Response({
         "message": f"Order status updated to {new_status}",
-        "status": order.status
-    }, status=200)
-    
-    
+        "status": order.status,
+        "wallet_updated": True if new_status == "delivered" else False
+    }, status=200)    
     
     
 # ===============================
